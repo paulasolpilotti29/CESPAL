@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dashboard Ejecutivo CESPAL V4</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.jsscript>
+
+<style>
+
+body{
+    background:#f4f6f9;
+    font-family:Segoe UI;
+}
+
+.header{
+    background:#005b2e;
+    color:white;
+    padding:25px;
+}
+
+.card-kpi{
+    border:none;
+    border-radius:15px;
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+.kpi-number{
+    font-size:2.2rem;
+    font-weight:bold;
+}
+
+.chart-card{
+    background:white;
+    border-radius:15px;
+    padding:15px;
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+canvas{
+    max-height:400px;
+}
+
+table{
+    font-size:.85rem;
+}
+
+#loader{
+    display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+    <h1>
+        Dashboard Ejecutivo CESPAL V4
+    </h1>
+
+    <h5>
+        Lectura directa de Excel
+    </h5>
+
+</div>
+
+<div class="container-fluid mt-4">
+
+    <div class="row">
+
+        <div class="col-md-5">
+
+            <label class="form-label fw-bold">
+                Archivo OT
+            </label>
+
+            <input
+                type="file"
+                id="excelOT"
+                class="form-control"
+                accept=".xlsx,.xls">
+
+        </div>
+
+        <div class="col-md-5">
+
+            <label class="form-label fw-bold">
+                Archivo Materiales
+            </label>
+
+            <input
+                type="file"
+                id="excelMateriales"
+                class="form-control"
+                accept=".xlsx,.xls">
+
+        </div>
+
+        <div class="col-md-2 d-grid">
+
+            <label>&nbsp;</label>
+
+            <button
+                class="btn btn-success"
+                onclick="procesarArchivos()">
+
+                Procesar Datos
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div
+        class="alert alert-info mt-3"
+        id="loader">
+
+        Procesando información...
+
+    </div>
+
+</div>
+
+<div class="container-fluid mt-3">
+
+<div class="row g-3">
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>OT Totales</h6>
+
+<div
+class="kpi-number text-primary"
+id="kpiOT">
+
+0
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>Costo Total</h6>
+
+<div
+class="kpi-number text-success"
+id="kpiCosto">
+
+$0
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>Costo Promedio</h6>
+
+<div
+class="kpi-number text-info"
+id="kpiPromedio">
+
+$0
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>Clientes</h6>
+
+<div
+class="kpi-number text-purple"
+id="kpiClientes">
+
+0
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>Materiales</h6>
+
+<div
+class="kpi-number text-warning"
+id="kpiMateriales">
+
+0
+
+</div>
+
+</div>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card card-kpi">
+<div class="card-body text-center">
+
+<h6>Participantes</h6>
+
+<div
+class="kpi-number text-danger"
+id="kpiParticipantes">
+
+0
+
+</div>
+
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="row mt-4">
+
+<div class="col-lg-6">
+
+<div class="chart-card">
+
+<h5>
+Top Clientes por Costo
+</h5>
+
+<canvas
+id="chartClientes">
+</canvas>
+
+</div>
+
+</div>
+
+<div class="col-lg-6">
+
+<div class="chart-card">
+
+<h5>
+Top Materiales
+</h5>
+
+<canvas
+id="chartMateriales">
+</canvas>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="row mt-4">
+
+<div class="col-lg-6">
+
+<div class="chart-card">
+
+<h5>
+Participantes
+</h5>
+
+<canvas
+id="chartParticipantes">
+</canvas>
+
+</div>
+
+</div>
+
+<div class="col-lg-6">
+
+<div class="chart-card">
+
+<h5>
+Tipos de OT
+</h5>
+
+<canvas
+id="chartTiposOT">
+</canvas>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let datosOT = [];
+
+let datosMateriales = [];
+
+let baseConsolidada = [];
+
+let chartClientes;
+let chartMateriales;
+let chartParticipantes;
+let chartTiposOT;
+
+function moneda(valor){
+
+    return valor.toLocaleString(
+        'es-AR',
+        {
+            style:'currency',
+            currency:'ARS',
+            maximumFractionDigits:0
+        }
+    );
+
+}
+
+function numero(v){
+
+    const n =
+        parseFloat(v);
+
+    return isNaN(n)
+        ? 0
+        : n;
+
+}
+
+function limpiarParticipante(txt){
+
+    if(!txt)
+        return '';
+
+    return txt
+        .replace(/^\d+\-/,'')
+        .trim();
+
+}
+
+function leerArchivoExcel(file){
+
+    return new Promise(
+        (resolve,reject)=>{
+
+        const reader =
+            new FileReader();
+
+        reader.onload =
+        function(e){
+
+            const data =
+                new Uint8Array(
+                    e.target.result
+                );
+
+            const workbook =
+                XLSX.read(
+                    data,
+                    {
+                        type:'array'
+                    }
+                );
+
+            const hoja =
+                workbook.SheetNames[0];
+
+            const json =
+                XLSX.utils.sheet_to_json(
+                    workbook.Sheets[hoja],
+                    {
+                        header:1,
+                        blankrows:false
+                    }
+                );
+
+            resolve(json);
+
+        };
+
+        reader.onerror =
+            reject;
+
+        reader.readAsArrayBuffer(
+            file
+        );
+
+    });
+
+}
+async function procesarArchivos(){
+
+    const archivoOT =
+        document.getElementById(
+            "excelOT"
+        ).files[0];
+
+    const archivoMAT =
+        document.getElementById(
+            "excelMateriales"
+        ).files[0];
+
+    if(!archivoOT || !archivoMAT){
+
+        alert(
+            "Seleccione ambos archivos"
+        );
+
+        return;
+
+    }
+
+    document.getElementById(
+        "loader"
+    ).style.display="block";
+
+    try{
+
+        const hojaOT =
+            await leerArchivoExcel(
+                archivoOT
+            );
+
+        const hojaMAT =
+            await leerArchivoExcel(
+                archivoMAT
+            );
+
+        datosOT =
+            procesarOT(
+                hojaOT
+            );
+
+        datosMateriales =
+            procesarMateriales(
+                hojaMAT
+            );
+
+        consolidarDatos();
+
+        generarKPIs();
+
+        generarGraficos();
+
+        cargarTablas();
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        alert(
+            "Error procesando archivos"
+        );
+
+    }
+
+    document.getElementById(
+        "loader"
+    ).style.display="none";
+
+}
+
+function procesarOT(filas){
+
+    let resultado=[];
+
+    let tipoActual='';
+
+    for(let i=0;i<filas.length;i++){
+
+        const fila=
+            filas[i];
+
+        if(!fila)
+            continue;
+
+        const texto=
+            fila.join(' ');
+
+        if(
+            /^(\d+)\s*-\s*/.test(
+                texto
+            )
+        ){
+
+            tipoActual=
+                texto.trim();
+
+            continue;
+
+        }
+
+        const posibleOT=
+            String(
+                fila[0] || ''
+            ).trim();
+
+        if(
+            /^\d{5,6}$/.test(
+                posibleOT
+            )
+        ){
+
+            resultado.push({
+
+                OT:
+                    posibleOT,
+
+                Tipo:
+                    tipoActual,
+
+                Cuenta:
+                    fila[2] || '',
+
+                Titular:
+                    fila[4] || '',
+
+                Domicilio:
+                    fila[5] || '',
+
+                Telefono:
+                    fila[6] || '',
+
+                Servicio:
+                    'ENERGIA ELECTRICA'
+
+            });
+
+        }
+
+    }
+
+    return resultado;
+
+}
+
+function procesarMateriales(filas){
+
+    let registros=[];
+
+    let otActual='';
+
+    let titularActual='';
+
+    let participantes=[];
+
+    let leyendoParticipantes=false;
+
+    let leyendoMateriales=false;
+
+    for(let i=0;i<filas.length;i++){
+
+        const fila=
+            filas[i];
+
+        if(!fila)
+            continue;
+
+        const col0=
+            String(
+                fila[0] || ''
+            ).trim();
+
+        if(
+            /^\d{5,6}$/.test(
+                col0
+            )
+        ){
+
+            otActual=
+                col0;
+
+            continue;
+
+        }
+
+        if(
+            col0==="Participante"
+        ){
+
+            leyendoParticipantes=true;
+            leyendoMateriales=false;
+
+            continue;
+
+        }
+
+        if(
+            col0==="Fecha"
+        ){
+
+            leyendoParticipantes=false;
+            leyendoMateriales=true;
+
+            continue;
+
+        }
+
+        if(
+            col0==="Subtotal:"
+        ){
+
+            leyendoParticipantes=false;
+            leyendoMateriales=false;
+
+            continue;
+
+        }
+
+        if(
+            leyendoParticipantes
+        ){
+
+            if(
+                fila.length>=1
+            ){
+
+                participantes.push(
+                    limpiarParticipante(
+                        col0
+                    )
+                );
+
+            }
+
+        }
+
+        if(
+            leyendoMateriales
+        ){
+
+            if(
+                fila.length>=6
+            ){
+
+                registros.push({
+
+                    OT:
+                        otActual,
+
+                    Titular:
+                        titularActual,
+
+                    Participantes:
+                        [...participantes],
+
+                    Fecha:
+                        fila[0],
+
+                    Codigo:
+                        fila[1],
+
+                    Material:
+                        fila[2],
+
+                    Cantidad:
+                        numero(
+                            fila[3]
+                        ),
+
+                    Precio:
+                        numero(
+                            fila[4]
+                        ),
+
+                    Importe:
+                        numero(
+                            fila[5]
+                        )
+
+                });
+
+            }
+
+        }
+
+        if(
+
+            col0.length>5
+            &&
+            !/subtotal/i.test(
+                col0
+            )
+            &&
+            !/fecha/i.test(
+                col0
+            )
+            &&
+            !/participante/i.test(
+                col0
+            )
+            &&
+            isNaN(col0)
+
+        ){
+
+            titularActual=
+                col0;
+
+        }
+
+    }
+
+    return registros;
+
+}
+
+function consolidarDatos(){
+
+    baseConsolidada=[];
+
+    const mapaOT=
+        new Map();
+
+    datosOT.forEach(item=>{
+
+        mapaOT.set(
+            String(item.OT),
+            item
+        );
+
+    });
+
+    datosMateriales.forEach(mat=>{
+
+        const infoOT=
+            mapaOT.get(
+                String(mat.OT)
+            ) || {};
+
+        baseConsolidada.push({
+
+            OT:
+                mat.OT,
+
+            TipoOT:
+                infoOT.Tipo || '',
+
+            Titular:
+                infoOT.Titular ||
+                mat.Titular,
+
+            Domicilio:
+                infoOT.Domicilio || '',
+
+            Cuenta:
+                infoOT.Cuenta || '',
+
+            Material:
+                mat.Material,
+
+            Cantidad:
+                mat.Cantidad,
+
+            Precio:
+                mat.Precio,
+
+            Importe:
+                mat.Importe,
+
+            Participantes:
+                mat.Participantes || []
+
+        });
+
+    });
+
+}
+function generarKPIs(){
+
+    const otsUnicas =
+        new Set(
+            baseConsolidada.map(
+                x => x.OT
+            )
+        );
+
+    const clientesUnicos =
+        new Set(
+            baseConsolidada.map(
+                x => x.Titular
+            )
+        );
+
+    const materialesUnicos =
+        new Set(
+            baseConsolidada.map(
+                x => x.Material
+            )
+        );
+
+    const participantesUnicos =
+        new Set();
+
+    baseConsolidada.forEach(reg => {
+
+        (reg.Participantes || [])
+        .forEach(p => {
+
+            if(
+                p &&
+                p.trim()!==""
+            ){
+
+                participantesUnicos.add(
+                    p
+                );
+
+            }
+
+        });
+
+    });
+
+    const costoTotal =
+        baseConsolidada.reduce(
+            (sum,item)=>
+                sum +
+                item.Importe,
+            0
+        );
+
+    const costoPromedio =
+        otsUnicas.size > 0
+        ? costoTotal / otsUnicas.size
+        : 0;
+
+    document.getElementById(
+        "kpiOT"
+    ).innerText =
+        otsUnicas.size;
+
+    document.getElementById(
+        "kpiCosto"
+    ).innerText =
+        moneda(
+            costoTotal
+        );
+
+    document.getElementById(
+        "kpiPromedio"
+    ).innerText =
+        moneda(
+            costoPromedio
+        );
+
+    document.getElementById(
+        "kpiClientes"
+    ).innerText =
+        clientesUnicos.size;
+
+    document.getElementById(
+        "kpiMateriales"
+    ).innerText =
+        materialesUnicos.size;
+
+    document.getElementById(
+        "kpiParticipantes"
+    ).innerText =
+        participantesUnicos.size;
+
+}
+
+function topClientes(){
+
+    const mapa={};
+
+    baseConsolidada.forEach(item=>{
+
+        const nombre =
+            item.Titular ||
+            "Sin Nombre";
+
+        mapa[nombre] =
+            (mapa[nombre]||0)
+            +
+            item.Importe;
+
+    });
+
+    return Object.entries(
+        mapa
+    )
+    .sort(
+        (a,b)=>
+            b[1]-a[1]
+    )
+    .slice(0,10);
+
+}
+
+function topMateriales(){
+
+    const mapa={};
+
+    baseConsolidada.forEach(item=>{
+
+        const mat =
+            item.Material ||
+            "Sin Material";
+
+        mapa[mat] =
+            (mapa[mat]||0)
+            +
+            item.Importe;
+
+    });
+
+    return Object.entries(
+        mapa
+    )
+    .sort(
+        (a,b)=>
+            b[1]-a[1]
+    )
+    .slice(0,10);
+
+}
+
+function topParticipantes(){
+
+    const mapa={};
+
+    baseConsolidada.forEach(item=>{
+
+        (item.Participantes||[])
+        .forEach(part=>{
+
+            if(
+                !part ||
+                part.trim()===""
+            ) return;
+
+            mapa[part]=
+                (mapa[part]||0)+1;
+
+        });
+
+    });
+
+    return Object.entries(
+        mapa
+    )
+    .sort(
+        (a,b)=>
+            b[1]-a[1]
+    )
+    .slice(0,15);
+
+}
+
+function rankingTiposOT(){
+
+    const mapa={};
+
+    baseConsolidada.forEach(item=>{
+
+        const tipo =
+            item.TipoOT ||
+            "Sin Clasificar";
+
+        mapa[tipo]=
+            (mapa[tipo]||0)+1;
+
+    });
+
+    return Object.entries(
+        mapa
+    )
+    .sort(
+        (a,b)=>
+            b[1]-a[1]
+    );
+
+}
+
+function destruirGrafico(graf){
+
+    if(
+        graf &&
+        typeof graf.destroy ===
+        "function"
+    ){
+
+        graf.destroy();
+
+    }
+
+}
+
+function generarGraficos(){
+
+    destruirGrafico(
+        chartClientes
+    );
+
+    destruirGrafico(
+        chartMateriales
+    );
+
+    destruirGrafico(
+        chartParticipantes
+    );
+
+    destruirGrafico(
+        chartTiposOT
+    );
+
+    const clientes =
+        topClientes();
+
+    chartClientes =
+        new Chart(
+
+        document.getElementById(
+            "chartClientes"
+        ),
+
+        {
+            type:'bar',
+
+            data:{
+
+                labels:
+                    clientes.map(
+                        x=>x[0]
+                    ),
+
+                datasets:[{
+
+                    label:
+                        'Costo',
+
+                    data:
+                        clientes.map(
+                            x=>x[1]
+                        ),
+
+                    backgroundColor:
+                        '#198754'
+
+                }]
+
+            },
+
+            options:{
+
+                responsive:true,
+
+                plugins:{
+
+                    legend:{
+                        display:false
+                    }
+
+                }
+
+            }
+
+        }
+
+    );
+
+    const materiales =
+        topMateriales();
+
+    chartMateriales =
+        new Chart(
+
+        document.getElementById(
+            "chartMateriales"
+        ),
+
+        {
+            type:'bar',
+
+            data:{
+
+                labels:
+                    materiales.map(
+                        x=>x[0]
+                    ),
+
+                datasets:[{
+
+                    label:
+                        'Costo',
+
+                    data:
+                        materiales.map(
+                            x=>x[1]
+                        ),
+
+                    backgroundColor:
+                        '#0d6efd'
+
+                }]
+
+            },
+
+            options:{
+
+                indexAxis:'y',
+
+                responsive:true,
+
+                plugins:{
+
+                    legend:{
+                        display:false
+                    }
+
+                }
+
+            }
+
+        }
+
+    );
+
+    const participantes =
+        topParticipantes();
+
+    chartParticipantes =
+        new Chart(
+
+        document.getElementById(
+            "chartParticipantes"
+        ),
+
+        {
+            type:'doughnut',
+
+            data:{
+
+                labels:
+                    participantes.map(
+                        x=>x[0]
+                    ),
+
+                datasets:[{
+
+                    data:
+                        participantes.map(
+                            x=>x[1]
+                        )
+
+                }]
+
+            },
+
+            options:{
+
+                responsive:true
+
+            }
+
+        }
+
+    );
+
+    const tipos =
+        rankingTiposOT();
+
+    chartTiposOT =
+        new Chart(
+
+        document.getElementById(
+            "chartTiposOT"
+        ),
+
+        {
+            type:'pie',
+
+            data:{
+
+                labels:
+                    tipos.map(
+                        x=>x[0]
+                    ),
+
+                datasets:[{
+
+                    data:
+                        tipos.map(
+                            x=>x[1]
+                        )
+
+                }]
+
+            },
+
+            options:{
+
+                responsive:true
+
+            }
+
+        }
+
+    );
+
+}
+<div class="container-fluid mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-dark text-white">
+
+            <div class="row">
+
+                <div class="col-md-6">
+
+                    <h5>
+                        Detalle Consolidado
+                    </h5>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <input
+                        type="text"
+                        id="filtroTabla"
+                        class="form-control"
+                        placeholder="Buscar..."
+                        onkeyup="filtrarTabla()">
+
+                </div>
+
+                <div class="col-md-3 text-end">
+
+                    <button
+                        class="btn btn-success"
+                        onclick="exportarExcel()">
+
+                        Exportar Excel
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div
+                class="table-responsive">
+
+                <table
+                    class="table table-striped table-hover"
+                    id="tablaDatos">
+
+                    <thead
+                        class="table-dark">
+
+                        <tr>
+
+                            <th>OT</th>
+                            <th>Tipo</th>
+                            <th>Titular</th>
+                            <th>Domicilio</th>
+                            <th>Material</th>
+                            <th>Cantidad</th>
+                            <th>Precio</th>
+                            <th>Importe</th>
+                            <th>Participantes</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="tbodyDatos">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+function cargarTablas(){
+
+    const tbody =
+        document.getElementById(
+            "tbodyDatos"
+        );
+
+    tbody.innerHTML='';
+
+    baseConsolidada.forEach(item=>{
+
+        const fila =
+            document.createElement(
+                'tr'
+            );
+
+        fila.innerHTML = `
+
+            <td>${item.OT || ''}</td>
+
+            <td>${item.TipoOT || ''}</td>
+
+            <td>${item.Titular || ''}</td>
+
+            <td>${item.Domicilio || ''}</td>
+
+            <td>${item.Material || ''}</td>
+
+            <td>${item.Cantidad || 0}</td>
+
+            <td>${moneda(item.Precio || 0)}</td>
+
+            <td>${moneda(item.Importe || 0)}</td>
+
+            <td>${(item.Participantes || []).join(', ')}</td>
+
+        `;
+
+        tbody.appendChild(
+            fila
+        );
+
+    });
+
+}
+
+function filtrarTabla(){
+
+    const texto =
+        document
+        .getElementById(
+            "filtroTabla"
+        )
+        .value
+        .toLowerCase();
+
+    const filas =
+        document.querySelectorAll(
+            "#tablaDatos tbody tr"
+        );
+
+    filas.forEach(fila=>{
+
+        const contenido =
+            fila.innerText
+            .toLowerCase();
+
+        fila.style.display =
+            contenido.includes(texto)
+            ? ''
+            : 'none';
+
+    });
+
+}
+
+function exportarExcel(){
+
+    const datosExportar =
+        baseConsolidada.map(item=>({
+
+            OT:
+                item.OT,
+
+            TipoOT:
+                item.TipoOT,
+
+            Titular:
+                item.Titular,
+
+            Domicilio:
+                item.Domicilio,
+
+            Material:
+                item.Material,
+
+            Cantidad:
+                item.Cantidad,
+
+            Precio:
+                item.Precio,
+
+            Importe:
+                item.Importe,
+
+            Participantes:
+                (item.Participantes || [])
+                .join(' | ')
+
+        }));
+
+    const hoja =
+        XLSX.utils.json_to_sheet(
+            datosExportar
+        );
+
+    const libro =
+        XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+
+        libro,
+        hoja,
+        "Dashboard"
+
+    );
+
+    XLSX.writeFile(
+
+        libro,
+        "Dashboard_CESPAL_V4.xlsx"
+
+    );
+
+}
+
+</script>
+
+</body>
+</html>
